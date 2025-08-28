@@ -1,0 +1,16 @@
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+pandas-ta
+scipy
+statsmodels
+nbformat>=4.2.0
+kaleido
+ipykernel
+xgboost
+tensorflow
+scikit-learn
+matplotlib-venn
+scikeras
