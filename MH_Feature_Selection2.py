@@ -7,7 +7,7 @@ MH_Feature_Selection.py - Simple Genetic Algorithm for Financial Feature Selecti
 This module implements a basic Genetic Algorithm (GA) for selecting optimal features
 from financial time series data.
 
-Author: Nicolas
+Author: Nicolas Cope
 Date: August 2025
 """
 
