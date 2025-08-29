@@ -6,7 +6,7 @@ This repository explores the application of **metaheuristic algorithms**, specif
 2. **Feature Engineering**: Creating and refining additional features to better capture patterns in financial time series data.
 
 ## How to Use
-To get started, open the `Chosen_Features.ipynb` notebook and run it step by step. The notebook demonstrates the process of applying the Genetic Algorithm to improve the performance of baseline models such as Random Forest, XGBoost, and Artificial Neural Networks (ANN).
+To get started, clone this repository into your workspace and open the `Chosen_Features.ipynb` notebook and run it step by step.
 
 ## Group Members
 - Cristina Abrahamse
