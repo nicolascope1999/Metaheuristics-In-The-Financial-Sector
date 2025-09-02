@@ -44,7 +44,7 @@ class GeneticAlgorithm:
                  pop_size=50, crossover_rate=0.8, mutation_rate=0.2, elite_size=3,
                  max_generations=30, min_features=5, max_features=30, cv_folds=5,
                  random_state=42, adaptive_rates=True, diversity_threshold=0.15,
-                 early_stopping_patience=10, debug=False):
+                 calm_before_storm=10, debug=True):
         """
         Initialize the Genetic Algorithm for feature selection.
         
@@ -80,7 +80,7 @@ class GeneticAlgorithm:
             Whether to use adaptive mutation/crossover rates
         diversity_threshold : float, default=0.15
             Minimum diversity threshold to maintain
-        early_stopping_patience : int, default=10
+        calm_before_storm : int, default=10
             Generations to wait before early stopping
         """
         self.X_train = X_train
@@ -98,7 +98,7 @@ class GeneticAlgorithm:
         self.random_state = random_state
         self.adaptive_rates = adaptive_rates
         self.diversity_threshold = diversity_threshold
-        self.early_stopping_patience = early_stopping_patience
+        self.calm_before_storm = calm_before_storm
         self.debug = debug
         
         # Adaptive rate parameters
@@ -268,6 +268,15 @@ class GeneticAlgorithm:
             
             # Combine metrics with stability being important
             fitness = (0.7 * mean_accuracy + 0.3 * cv_stability) - complexity_penalty
+
+            if hasattr(self, 'debug') and self.debug:
+                print("Fitness evaluation details:")
+                print(f"  Individual: {individual}")
+                print(f"  Selected features: {np.sum(individual)}")
+                print(f"  Mean accuracy: {mean_accuracy:.4f}")
+                print(f"  CV stability: {cv_stability:.4f}")
+                print(f"  Complexity penalty: {complexity_penalty:.4f}")
+                print(f"  Final fitness: {fitness:.4f}")
             
             return max(0.0, fitness)
             
@@ -310,7 +319,7 @@ class GeneticAlgorithm:
         if diversity < self.diversity_threshold:
             # Find worst performers to replace
             worst_indices = np.argsort(fitness_scores)[:self.pop_size//4]  # Replace worst 25%
-            
+
             for idx in worst_indices:
                 # Create diverse individual
                 if np.random.random() < 0.5:
@@ -329,6 +338,12 @@ class GeneticAlgorithm:
                     individual[flip_indices] = ~individual[flip_indices]
                     self._ensure_constraints(individual)
                     self.population[idx] = individual
+
+        if hasattr(self, 'debug') and self.debug:
+            print(f"Injecting diversity into population...")
+            print(f"Worst fitness scores: {[fitness_scores[i] for i in worst_indices]}")
+            print(f"Created random individual with {np.sum(self.population[worst_indices[0]])} features")
+            print(f"Modified individual: {np.sum(self.population[worst_indices[1]])} -> {np.sum(self.population[worst_indices[1]])} features, {np.random.randint(3, 8)} flips")
     
     def update_adaptive_rates(self, generation):
         """Update mutation and crossover rates based on diversity and progress"""
@@ -450,6 +465,54 @@ class GeneticAlgorithm:
                 new_population[i] = elite
         
         return new_population
+
+    def natural_disaster(self):
+        """
+        Perform a natural disaster operation on the population.
+        Splits the population into thirds based on fitness scores and:
+        - Keeps the best 70% from the top third
+        - Keeps the best 50% from the middle third
+        - Keeps the best 25% from the bottom third
+        - Fills the rest of the population with new random individuals
+        """
+        # Evaluate fitness scores for the current population
+        fitness_scores = self.evaluate_population()
+        
+        # Sort population by fitness (descending order)
+        sorted_indices = np.argsort(fitness_scores)[::-1]
+        sorted_population = [self.population[i] for i in sorted_indices]
+        sorted_fitness = [fitness_scores[i] for i in sorted_indices]
+        
+        # Split population into thirds
+        third_size = len(self.population) // 3
+        top_third = sorted_population[:third_size]
+        middle_third = sorted_population[third_size:2 * third_size]
+        bottom_third = sorted_population[2 * third_size:]
+        
+        # Keep the best individuals from each third
+        new_population = []
+        new_population.extend(top_third[:int(0.7 * len(top_third))])  # Best 70% of top third
+        new_population.extend(middle_third[:int(0.5 * len(middle_third))])  # Best 50% of middle third
+        new_population.extend(bottom_third[:int(0.25 * len(bottom_third))])  # Best 25% of bottom third
+        
+        # Fill the rest of the population with new random individuals
+        while len(new_population) < self.pop_size:
+            num_features = np.random.randint(self.min_features, self.max_features + 1)
+            new_individual = np.zeros(len(self.feature_names), dtype=bool)
+            selected_indices = np.random.choice(len(self.feature_names), size=num_features, replace=False)
+            new_individual[selected_indices] = True
+            new_population.append(new_individual)
+        
+        # Debug: Print details about the new population
+        if self.debug:
+            print(f"Natural disaster applied:")
+            print(f"  Top third kept: {int(0.7 * len(top_third))}/{len(top_third)}")
+            print(f"  Middle third kept: {int(0.5 * len(middle_third))}/{len(middle_third)}")
+            print(f"  Bottom third kept: {int(0.25 * len(bottom_third))}/{len(bottom_third)}")
+            print(f"  New random individuals added: {self.pop_size - len(new_population)}")
+        
+        return new_population
+    
     
     def evolve(self, generation):
         """Evolve the population for one generation with diversity management"""
@@ -547,12 +610,12 @@ class GeneticAlgorithm:
                       f"Best={num_features:2d}, Pop=[{min_pop_features:2d}-{avg_pop_features:.1f}-{max_pop_features:2d}], "
                       f"Div={current_diversity:.3f}, Stag={self.stagnation_count}")
             
-            # Early stopping check
-            if self.stagnation_count >= self.early_stopping_patience:
-                if verbose:
-                    print(f"Early stopping at generation {generation} (no improvement for {self.stagnation_count} generations)")
-                break
-        
+            # Natural Disaster
+            if self.stagnation_count >= self.calm_before_storm:
+                print(f"Natural disaster at generation {generation} (stagnation for {self.stagnation_count} generations)")
+                self.population = self.natural_disaster()
+                self.stagnation_count = 0
+
         # Final results
         if verbose:
             print(f"\nGA completed!")
