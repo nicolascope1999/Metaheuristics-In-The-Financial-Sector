@@ -4,9 +4,10 @@ __pycache__/
 *$py.class
 
 # Generated model files and data
-baseline_models/
-ga_models/
 iframe_figures/
+
+# Folders starting with run_
+run_*/**
 
 # Generated CSV files (except source data)
 raw_data/engineered_features.csv
