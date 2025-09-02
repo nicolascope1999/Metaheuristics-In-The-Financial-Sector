@@ -44,7 +44,7 @@ class GeneticAlgorithm:
                  pop_size=50, crossover_rate=0.8, mutation_rate=0.2, elite_size=3,
                  max_generations=30, min_features=5, max_features=30, cv_folds=5,
                  random_state=42, adaptive_rates=True, diversity_threshold=0.15,
-                 calm_before_storm=10, debug=True):
+                 calm_before_storm=10, debug=True, use_dynamic_rates=True):
         """
         Initialize the Genetic Algorithm for feature selection.
         
@@ -82,6 +82,10 @@ class GeneticAlgorithm:
             Minimum diversity threshold to maintain
         calm_before_storm : int, default=10
             Generations to wait before early stopping
+        use_dynamic_rates : bool, default=True
+            Whether to use dynamic crossover and mutation rates based on population size
+            - For small populations (≤100): ILM/DHC strategy 
+            - For large populations (≥200): DHM/ILC strategy
         """
         self.X_train = X_train
         self.y_train = y_train
@@ -100,10 +104,29 @@ class GeneticAlgorithm:
         self.diversity_threshold = diversity_threshold
         self.calm_before_storm = calm_before_storm
         self.debug = debug
+        self.use_dynamic_rates = use_dynamic_rates
         
         # Adaptive rate parameters
         self.base_crossover_rate = crossover_rate
         self.base_mutation_rate = mutation_rate
+        
+        # Dynamic rates strategy selection based on population size
+        if use_dynamic_rates:
+            if pop_size <= 100:
+                self.dynamic_strategy = 'ILM_DHC'  # Increasing Low Mutation/Dynamic High Crossover
+                if debug:
+                    print(f"Using ILM/DHC strategy for small population ({pop_size} individuals)")
+            else:
+                self.dynamic_strategy = 'DHM_ILC'  # Dynamic High Mutation/Increasing Low Crossover
+                if debug:
+                    print(f"Using DHM/ILC strategy for large population ({pop_size} individuals)")
+            
+            # When using dynamic rates, disable traditional adaptive rates by default
+            # to avoid conflicts (unless explicitly enabled)
+            if adaptive_rates and debug:
+                print("Warning: Using both dynamic rates and adaptive rates. Consider using only one approach.")
+        else:
+            self.dynamic_strategy = None
         
         # Initialize tracking variables
         self.population = None
@@ -345,28 +368,74 @@ class GeneticAlgorithm:
             print(f"Created random individual with {np.sum(self.population[worst_indices[0]])} features")
             print(f"Modified individual: {np.sum(self.population[worst_indices[1]])} -> {np.sum(self.population[worst_indices[1]])} features, {np.random.randint(3, 8)} flips")
     
+    def calculate_dynamic_rates(self, generation):
+        """Calculate dynamic crossover and mutation rates based on generation progress"""
+        if not self.use_dynamic_rates:
+            return self.crossover_rate, self.mutation_rate
+        
+        # Calculate progress (0.0 to 1.0)
+        progress = generation / self.max_generations if self.max_generations > 0 else 0.0
+        
+        if self.dynamic_strategy == 'ILM_DHC':
+            # Increasing Low Mutation/Dynamic High Crossover (for small populations)
+            # Start: 0% mutation, 100% crossover → End: 100% mutation, 0% crossover
+            mutation_rate = progress
+            crossover_rate = 1.0 - progress
+        elif self.dynamic_strategy == 'DHM_ILC':
+            # Dynamic High Mutation/Increasing Low Crossover (for large populations)
+            # Start: 100% mutation, 0% crossover → End: 0% mutation, 100% crossover
+            mutation_rate = 1.0 - progress
+            crossover_rate = progress
+        else:
+            # Fallback to base rates
+            mutation_rate = self.base_mutation_rate
+            crossover_rate = self.base_crossover_rate
+        
+        # Apply reasonable bounds to prevent extreme values
+        mutation_rate = max(0.01, min(0.99, mutation_rate))  # Keep between 1% and 99%
+        crossover_rate = max(0.01, min(0.99, crossover_rate))
+        
+        return crossover_rate, mutation_rate
+    
     def update_adaptive_rates(self, generation):
-        """Update mutation and crossover rates based on diversity and progress"""
+        """Update mutation and crossover rates based on dynamic strategy and diversity"""
+        # First calculate dynamic rates if enabled
+        if self.use_dynamic_rates:
+            self.crossover_rate, self.mutation_rate = self.calculate_dynamic_rates(generation)
+            
+            if self.debug and generation % 5 == 0:  # Print every 5 generations to avoid spam
+                print(f"Gen {generation}: Dynamic rates - Crossover: {self.crossover_rate:.3f}, Mutation: {self.mutation_rate:.3f} ({self.dynamic_strategy})")
+        
+        # Then apply diversity-based adjustments if adaptive_rates is enabled
         if not self.adaptive_rates:
             return
         
         diversity = self.calculate_population_diversity()
         
-        # Increase mutation rate if diversity is low
+        # Adjust rates based on diversity (but don't override dynamic rates completely)
         if diversity < self.diversity_threshold:
-            self.mutation_rate = min(0.3, self.base_mutation_rate * 1.5)
-            self.crossover_rate = max(0.6, self.base_crossover_rate * 0.8)
+            # Increase mutation rate if diversity is low (but respect dynamic strategy bounds)
+            if self.use_dynamic_rates:
+                # Apply a moderate adjustment to dynamic rates
+                self.mutation_rate = min(0.95, self.mutation_rate * 1.2)
+                self.crossover_rate = max(0.05, self.crossover_rate * 0.9)
+            else:
+                # Original adaptive behavior for non-dynamic rates
+                self.mutation_rate = min(0.3, self.base_mutation_rate * 1.5)
+                self.crossover_rate = max(0.6, self.base_crossover_rate * 0.8)
         else:
-            # Gradually return to base rates
-            self.mutation_rate = max(self.base_mutation_rate, self.mutation_rate * 0.95)
-            self.crossover_rate = min(self.base_crossover_rate, self.crossover_rate * 1.05)
+            # Gradually return towards calculated rates
+            if not self.use_dynamic_rates:
+                self.mutation_rate = max(self.base_mutation_rate, self.mutation_rate * 0.95)
+                self.crossover_rate = min(self.base_crossover_rate, self.crossover_rate * 1.05)
         
-        # Adaptive rates based on generation progress
+        # Late/early generation adjustments (less aggressive if using dynamic rates)
         progress = generation / self.max_generations
-        if progress > 0.7:  # Late in evolution
-            self.mutation_rate = max(0.05, self.mutation_rate * 0.9)  # Reduce mutation for fine-tuning
-        elif progress < 0.3:  # Early in evolution
-            self.mutation_rate = min(0.25, self.mutation_rate * 1.1)  # Increase exploration
+        if not self.use_dynamic_rates:
+            if progress > 0.7:  # Late in evolution
+                self.mutation_rate = max(0.05, self.mutation_rate * 0.9)  # Reduce mutation for fine-tuning
+            elif progress < 0.3:  # Early in evolution
+                self.mutation_rate = min(0.25, self.mutation_rate * 1.1)  # Increase exploration
     
     def select_parents(self, fitness_scores):
         """Simple tournament selection"""
@@ -382,8 +451,10 @@ class GeneticAlgorithm:
         return parents
     
     def crossover(self, parent1, parent2):
-        """Simple uniform crossover"""
-        if np.random.random() > self.crossover_rate:
+        """Simple uniform crossover - always performs crossover when called"""
+        # When using dynamic rates, we control crossover at the population level
+        # so this method always performs crossover
+        if not self.use_dynamic_rates and np.random.random() > self.crossover_rate:
             return parent1.copy(), parent2.copy()
         
         # Uniform crossover
@@ -426,9 +497,17 @@ class GeneticAlgorithm:
         """Simplified mutation with basic feature count management"""
         mutated = individual.copy()
         
+        if self.use_dynamic_rates:
+            # When using dynamic rates, always mutate when this method is called
+            # Use a reasonable mutation probability per bit
+            bit_mutation_prob = 0.1  # 10% chance per bit
+        else:
+            # Original behavior - use mutation_rate per bit
+            bit_mutation_prob = self.mutation_rate
+        
         # Basic bit-flip mutation
         for i in range(len(mutated)):
-            if np.random.random() < self.mutation_rate:
+            if np.random.random() < bit_mutation_prob:
                 mutated[i] = not mutated[i]
         
         # Ensure we explore different feature counts
@@ -491,9 +570,9 @@ class GeneticAlgorithm:
         
         # Keep the best individuals from each third
         new_population = []
-        new_population.extend(top_third[:int(0.7 * len(top_third))])  # Best 70% of top third
-        new_population.extend(middle_third[:int(0.5 * len(middle_third))])  # Best 50% of middle third
-        new_population.extend(bottom_third[:int(0.25 * len(bottom_third))])  # Best 25% of bottom third
+        new_population.extend(top_third[:int(0.5 * len(top_third))])  # Best 70% of top third
+        new_population.extend(middle_third[:int(0.3 * len(middle_third))])  # Best 50% of middle third
+        new_population.extend(bottom_third[:int(0.1 * len(bottom_third))])  # Best 25% of bottom third
         
         # Fill the rest of the population with new random individuals
         while len(new_population) < self.pop_size:
@@ -557,18 +636,69 @@ class GeneticAlgorithm:
         # Create new population
         new_population = []
         
-        # Crossover
-        for i in range(0, self.pop_size, 2):
-            if i+1 < self.pop_size:
-                parent1, parent2 = parents[i], parents[i+1]
-                child1, child2 = self.crossover(parent1, parent2)
-                new_population.extend([child1, child2])
-            else:
-                new_population.append(parents[i])
+        if self.use_dynamic_rates:
+            # Dynamic rates approach - determine exact number of individuals for each operation
+            num_for_crossover = int(self.crossover_rate * self.pop_size)
+            num_for_mutation = int(self.mutation_rate * self.pop_size)
+            
+            # Ensure we don't exceed population size
+            if num_for_crossover + num_for_mutation > self.pop_size:
+                # Prioritize based on strategy
+                if self.dynamic_strategy == 'ILM_DHC':
+                    # Prioritize crossover in early generations, mutation in later
+                    if self.crossover_rate > self.mutation_rate:
+                        num_for_crossover = min(num_for_crossover, self.pop_size - num_for_mutation)
+                    else:
+                        num_for_mutation = min(num_for_mutation, self.pop_size - num_for_crossover)
+                else:  # DHM_ILC
+                    # Prioritize mutation in early generations, crossover in later
+                    if self.mutation_rate > self.crossover_rate:
+                        num_for_mutation = min(num_for_mutation, self.pop_size - num_for_crossover)
+                    else:
+                        num_for_crossover = min(num_for_crossover, self.pop_size - num_for_mutation)
+            
+            # Apply crossover to selected pairs
+            crossover_pairs = num_for_crossover // 2
+            for i in range(crossover_pairs):
+                idx1, idx2 = i * 2, i * 2 + 1
+                if idx1 < len(parents) and idx2 < len(parents):
+                    child1, child2 = self.crossover(parents[idx1], parents[idx2])
+                    new_population.extend([child1, child2])
+            
+            # Handle odd number for crossover
+            if num_for_crossover % 2 == 1 and crossover_pairs * 2 < len(parents):
+                new_population.append(parents[crossover_pairs * 2].copy())
+            
+            # Fill remaining with direct copies
+            remaining_needed = self.pop_size - len(new_population)
+            start_idx = min(num_for_crossover, len(parents))
+            for i in range(remaining_needed):
+                if start_idx + i < len(parents):
+                    new_population.append(parents[start_idx + i].copy())
+                else:
+                    # If we run out of parents, copy from the beginning
+                    new_population.append(parents[i % len(parents)].copy())
+            
+            # Apply mutation to selected individuals
+            mutation_indices = np.random.choice(len(new_population), 
+                                              size=min(num_for_mutation, len(new_population)), 
+                                              replace=False)
+            for idx in mutation_indices:
+                new_population[idx] = self.mutate(new_population[idx])
         
-        # Mutation
-        for i in range(self.pop_size):
-            new_population[i] = self.mutate(new_population[i])
+        else:
+            # Original approach - crossover for all pairs, then mutation
+            for i in range(0, self.pop_size, 2):
+                if i+1 < self.pop_size:
+                    parent1, parent2 = parents[i], parents[i+1]
+                    child1, child2 = self.crossover(parent1, parent2)
+                    new_population.extend([child1, child2])
+                else:
+                    new_population.append(parents[i])
+            
+            # Mutation for all individuals
+            for i in range(self.pop_size):
+                new_population[i] = self.mutate(new_population[i])
         
         # Elitism
         new_population = self.elitism(fitness_scores, new_population)
@@ -585,6 +715,15 @@ class GeneticAlgorithm:
             print(f"  Population: {self.pop_size}, Generations: {self.max_generations}")
             print(f"  Features range: {self.min_features}-{self.max_features}")
             print(f"  Model: {self.model_type}, CV folds: {self.cv_folds}")
+            
+            if self.use_dynamic_rates:
+                strategy_desc = {
+                    'ILM_DHC': 'ILM/DHC (0%→100% mutation, 100%→0% crossover for small populations)',
+                    'DHM_ILC': 'DHM/ILC (100%→0% mutation, 0%→100% crossover for large populations)'
+                }
+                print(f"  Dynamic rates: {strategy_desc.get(self.dynamic_strategy, 'Unknown')}")
+            else:
+                print(f"  Fixed rates: Crossover={self.crossover_rate}, Mutation={self.mutation_rate}")
             
             # Show initial population stats
             initial_counts = [np.sum(ind) for ind in self.population]
@@ -606,9 +745,14 @@ class GeneticAlgorithm:
                 # Get current diversity
                 current_diversity = self.diversity_history[-1] if self.diversity_history else 0
                 
+                # Show dynamic rates info occasionally
+                rates_info = ""
+                if self.use_dynamic_rates and generation % 10 == 0:  # Every 10 generations
+                    rates_info = f", C/M={self.crossover_rate:.2f}/{self.mutation_rate:.2f}"
+                
                 print(f"Gen {generation:2d}: Fitness={self.best_fitness:.4f}, "
                       f"Best={num_features:2d}, Pop=[{min_pop_features:2d}-{avg_pop_features:.1f}-{max_pop_features:2d}], "
-                      f"Div={current_diversity:.3f}, Stag={self.stagnation_count}")
+                      f"Div={current_diversity:.3f}, Stag={self.stagnation_count}{rates_info}")
             
             # Natural Disaster
             if self.stagnation_count >= self.calm_before_storm:

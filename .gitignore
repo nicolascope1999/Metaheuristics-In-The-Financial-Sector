@@ -21,4 +21,4 @@ raw_data/EURUSD_H1_features.csv
 # Other files
 *.drawio
 *.log
-
+*.pdf
