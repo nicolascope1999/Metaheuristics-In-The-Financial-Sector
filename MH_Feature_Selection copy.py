@@ -41,10 +41,10 @@ class GeneticAlgorithm:
     """
     
     def __init__(self, X_train, y_train, feature_names, model_type='random_forest', 
-                 pop_size=50, crossover_rate=0.8, mutation_rate=0.2, elite_size=5,
+                 pop_size=50, crossover_rate=0.8, mutation_rate=0.2, elite_size=3,
                  max_generations=30, min_features=5, max_features=30, cv_folds=5,
-                 random_state=42, adaptive_rates=False, diversity_threshold=0.1,
-                 calm_before_storm=8, debug=True, use_dynamic_rates=True):
+                 random_state=42, adaptive_rates=True, diversity_threshold=0.15,
+                 calm_before_storm=10, debug=True, use_dynamic_rates=True):
         """
         Initialize the Genetic Algorithm for feature selection.
         
@@ -59,29 +59,29 @@ class GeneticAlgorithm:
         model_type : str, default='random_forest'
             Model to use for fitness evaluation ('random_forest', 'xgboost', 'ann')
         pop_size : int, default=50
-            Population size
+            Population size (increased for better exploration)
         crossover_rate : float, default=0.8
             Crossover rate
         mutation_rate : float, default=0.2
-            Mutation rate
-        elite_size : int, default=5
-            Number of elite individuals to preserve (increased for better convergence)
+            Mutation rate (increased for better exploration)
+        elite_size : int, default=3
+            Number of elite individuals to preserve
         max_generations : int, default=30
-            Maximum number of generations
+            Maximum number of generations (increased)
         min_features : int, default=5
             Minimum number of features to use
         max_features : int, default=30
             Maximum number of features to use
         cv_folds : int, default=5
-            Number of cross-validation folds
+            Number of cross-validation folds (increased for stability)
         random_state : int, default=42
             Random seed for reproducibility
-        adaptive_rates : bool, default=False
-            Whether to use adaptive mutation/crossover rates (DISABLED by default for simplicity)
-        diversity_threshold : float, default=0.1
-            Minimum diversity threshold to maintain (lowered for more aggressive diversity management)
-        calm_before_storm : int, default=8
-            Generations to wait before natural disaster (reduced for faster adaptation)
+        adaptive_rates : bool, default=True
+            Whether to use adaptive mutation/crossover rates
+        diversity_threshold : float, default=0.15
+            Minimum diversity threshold to maintain
+        calm_before_storm : int, default=10
+            Generations to wait before early stopping
         use_dynamic_rates : bool, default=True
             Whether to use dynamic crossover and mutation rates based on population size
             - For small populations (≤100): ILM/DHC strategy 
@@ -122,11 +122,9 @@ class GeneticAlgorithm:
                     print(f"Using DHM/ILC strategy for large population ({pop_size} individuals)")
             
             # When using dynamic rates, disable traditional adaptive rates by default
-            # to avoid conflicts and complexity (unless explicitly enabled)
+            # to avoid conflicts (unless explicitly enabled)
             if adaptive_rates and debug:
-                print("Warning: Both dynamic rates and adaptive rates enabled.")
-                print("Recommendation: Use only dynamic rates for better performance.")
-                print("Set adaptive_rates=False to disable this warning.")
+                print("Warning: Using both dynamic rates and adaptive rates. Consider using only one approach.")
         else:
             self.dynamic_strategy = None
         
@@ -248,7 +246,7 @@ class GeneticAlgorithm:
     
     def fitness_function(self, individual):
         """
-        Enhanced fitness function with stability focus and better complexity penalty
+        Enhanced fitness function with stability focus
         
         Parameters:
         -----------
@@ -281,21 +279,29 @@ class GeneticAlgorithm:
                 X_selected, 
                 self.y_train,
                 cv=self.cv, 
-                scoring='accuracy',
-                n_jobs=-1  # Parallel CV for speed
+                scoring='accuracy'
             )
             
             # Enhanced fitness: prioritize stability and mean performance
             mean_accuracy = cv_scores.mean()
-            cv_stability = max(0.0, 1.0 - cv_scores.std())  # Higher stability = less variance
+            cv_stability = max(0.0, 1.0 - cv_scores.std())  # Higher stability = less variance, bounded at 0.0
             
-            # Progressive complexity penalty (quadratic for larger feature sets)
-            feature_ratio = num_features / len(self.feature_names)
-            complexity_penalty = 0.05 * (feature_ratio ** 2)  # Stronger penalty for many features
+            # Small complexity penalty but not too aggressive
+            # Increase penalty or make it adaptive to discourage large feature sets
+            complexity_penalty = 0.02 * (num_features / len(individual)) ** 1.5  # Stronger, non-linear penalty
             
             # Combine metrics with stability being important
-            fitness = mean_accuracy + 0.3 * cv_stability - complexity_penalty
+            fitness = mean_accuracy + cv_stability - complexity_penalty
 
+            if hasattr(self, 'debug') and self.debug:
+                print("Fitness evaluation details:")
+                print(f"  Individual: {individual}")
+                print(f"  Selected features: {np.sum(individual)}")
+                print(f"  Mean accuracy: {mean_accuracy:.4f}")
+                print(f"  CV stability: {cv_stability:.4f}")
+                print(f"  Complexity penalty: {complexity_penalty:.4f}")
+                print(f"  Final fitness: {fitness:.4f}")
+            
             return max(0.0, fitness)
             
         except Exception as e:

@@ -1,0 +1,100 @@
+C:AEDAUD	United Arab Emirates dirham - Australian dollar
+C:AEDBHD	United Arab Emirates dirham - Bahraini dinar
+C:AEDCAD	United Arab Emirates dirham - Canadian dollar
+C:AEDCHF	United Arab Emirates dirham - Swiss franc
+C:AEDDKK	United Arab Emirates dirham - Danish krone
+C:AEDEUR	United Arab Emirates dirham - Euro
+C:AEDGBP	United Arab Emirates dirham - Pound sterling
+C:AEDINR	United Arab Emirates dirham - Indian rupee
+C:AEDJPY	United Arab Emirates dirham - Japanese yen
+C:AEDNOK	United Arab Emirates dirham - Norwegian krone
+C:AEDNZD	United Arab Emirates dirham - New Zealand dollar
+C:AEDPKR	United Arab Emirates dirham - Pakistani rupee
+C:AEDSAR	United Arab Emirates dirham - Saudi riyal
+C:AEDSEK	United Arab Emirates dirham - Swedish krona
+C:AEDUSD	United Arab Emirates dirham - United States dollar
+C:AEDZAR	United Arab Emirates dirham - South African rand
+C:AFNGBP	Afghan afghani - Pound sterling
+C:ALLEUR	Albanian lek - Euro
+C:ALLGBP	Albanian lek - Pound sterling
+C:ALLUSD	Albanian lek - United States dollar
+C:AMDGBP	Armenian dram - Pound sterling
+C:ARSAUD	Argentine peso - Australian dollar
+C:ARSBRL	Argentine peso - Brazilian real
+C:ARSCAD	Argentine peso - Canadian dollar
+C:ARSCHF	Argentine peso - Swiss franc
+C:ARSCLP	Argentine peso - Chilean peso
+C:ARSCOP	Argentine peso - Colombian peso
+C:ARSEUR	Argentine peso - Euro
+C:ARSGBP	Argentine peso - Pound sterling
+C:ARSHKD	Argentine peso - Hong Kong dollar
+C:ARSJPY	Argentine peso - Japanese yen
+C:ARSMXN	Argentine peso - Mexican peso
+C:ARSPEN	Argentine peso - Peruvian nuevo sol
+C:ARSSGD	Argentine peso - Singapore dollar
+C:ARSUSD	Argentine peso - United States dollar
+C:ARSZAR	Argentine peso - South African rand
+C:AUDAED	Australian dollar - United Arab Emirates dirham
+C:AUDARS	Australian dollar - Argentine peso
+C:AUDBGN	Australian dollar - Bulgarian lev
+C:AUDBRL	Australian dollar - Brazilian real
+C:AUDCAD	Australian dollar - Canadian dollar
+C:AUDCHF	Australian dollar - Swiss franc
+C:AUDCLP	Australian dollar - Chilean peso
+C:AUDCNH	Australian dollar - Chinese yuan
+C:AUDCNY	Australian dollar - Chinese yuan
+C:AUDCZK	Australian dollar - Czech koruna
+C:AUDDKK	Australian dollar - Danish krone
+C:AUDEUR	Australian dollar - Euro
+C:AUDFJD	Australian dollar - Fiji dollar
+C:AUDGBP	Australian dollar - Pound sterling
+C:AUDHKD	Australian dollar - Hong Kong dollar
+C:AUDHUF	Australian dollar - Hungarian forint
+C:AUDIDR	Australian dollar - Indonesian rupiah
+C:AUDILS	Australian dollar - Israeli new shekel
+C:AUDINR	Australian dollar - Indian rupee
+C:AUDJPY	Australian dollar - Japanese yen
+C:AUDKRW	Australian dollar - South Korean won
+C:AUDMAD	Australian dollar - Moroccan dirham
+C:AUDMXN	Australian dollar - Mexican peso
+C:AUDMYR	Australian dollar - Malaysian ringgit
+C:AUDNOK	Australian dollar - Norwegian krone
+C:AUDNZD	Australian dollar - New Zealand dollar
+C:AUDPGK	Australian dollar - Papua New Guinean kina
+C:AUDPHP	Australian dollar - Philippine peso
+C:AUDPKR	Australian dollar - Pakistani rupee
+C:AUDPLN	Australian dollar - Polish złoty
+C:AUDSEK	Australian dollar - Swedish krona
+C:AUDSGD	Australian dollar - Singapore dollar
+C:AUDTHB	Australian dollar - Thai baht
+C:AUDTRY	Australian dollar - Turkish lira
+C:AUDTWD	Australian dollar - New Taiwan dollar
+C:AUDUSD	Australian dollar - United States dollar
+C:AUDZAR	Australian dollar - South African rand
+C:AWGGBP	Aruban florin - Pound sterling
+C:AWGUSD	Aruban florin - United States dollar
+C:BAMGBP	Bosnia and Herzegovina convertible mark - Pound sterling
+C:BAMUSD	Bosnia and Herzegovina convertible mark - United States dollar
+C:BBDEUR	Barbados dollar - Euro
+C:BBDGBP	Barbados dollar - Pound sterling
+C:BBDUSD	Barbados dollar - United States dollar
+C:BDTGBP	Bangladeshi taka - Pound sterling
+C:BDTJPY	Bangladeshi taka - Japanese yen
+C:BDTUSD	Bangladeshi taka - United States dollar
+C:BGNAUD	Bulgarian lev - Australian dollar
+C:BGNCAD	Bulgarian lev - Canadian dollar
+C:BGNCNY	Bulgarian lev - Chinese yuan
+C:BGNDKK	Bulgarian lev - Danish krone
+C:BGNUSD	Bulgarian lev - United States dollar
+C:BHDEUR	Bahraini dinar - Euro
+C:BHDPKR	Bahraini dinar - Pakistani rupee
+C:BHDUSD	Bahraini dinar - United States dollar
+C:BIFUSD	Burundian franc - United States dollar
+C:BMDBBD	Bermudian dollar - Barbados dollar
+C:BMDCAD	Bermudian dollar - Canadian dollar
+C:BMDEUR	Bermudian dollar - Euro
+C:BMDGBP	Bermudian dollar - Pound sterling
+C:BMDKYD	Bermudian dollar - Cayman Islands dollar
+C:BNDGBP	Brunei dollar - Pound sterling
+C:BNDUSD	Brunei dollar - United States dollar
+C:BOBGBP	Boliviano - Pound sterling
