@@ -12,6 +12,7 @@ run_*/**
 # Everything in raw_data
 raw_data/**
 other_stuff/**
+working_data/**
 
 # VS Code files
 .vscode/
