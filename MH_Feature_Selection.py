@@ -188,6 +188,7 @@ class GeneticAlgorithm:
             
             # Create individual
             individual = np.zeros(len(self.feature_names), dtype=bool)
+            # 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1
             selected_indices = np.random.choice(len(self.feature_names), 
                                               size=num_features, replace=False)
             individual[selected_indices] = True
@@ -234,14 +235,6 @@ class GeneticAlgorithm:
                 random_state=self.random_state,
                 n_jobs=-1,
                 verbosity=0
-            )
-        elif self.model_type == 'ann':
-            # For ANN, we'll use a simplified approach with sklearn metrics
-            return RandomForestClassifier(
-                n_estimators=50,
-                max_depth=8,
-                random_state=self.random_state,
-                n_jobs=-1
             )
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
