@@ -13,6 +13,7 @@ run_*/**
 raw_data/**
 other_stuff/**
 working_data/**
+performance_results/**
 
 # VS Code files
 .vscode/
