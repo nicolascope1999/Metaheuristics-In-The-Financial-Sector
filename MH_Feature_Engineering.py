@@ -34,14 +34,11 @@ class FeatureEngineeringGA:
     new financial features while respecting time-series constraints.
     """
     
-    def __init__(self, 
-                 data: pd.DataFrame, 
+    def __init__(self, data: pd.DataFrame, 
                  target: pd.Series, 
                  feature_type: str = 'AMA',
                  pop_size: int = 50,
                  max_generations: int = 30,
-                 crossover_rate: float = 0.8,
-                 mutation_rate: float = 0.2,
                  cv_folds: int = 5,
                  random_state: int = 42):
         """
@@ -59,10 +56,6 @@ class FeatureEngineeringGA:
             Population size for GA
         max_generations : int
             Maximum number of generations
-        crossover_rate : float
-            Probability of crossover
-        mutation_rate : float
-            Probability of mutation
         cv_folds : int
             Number of time-series cross-validation folds
         random_state : int
@@ -73,14 +66,17 @@ class FeatureEngineeringGA:
         self.feature_type = feature_type
         self.pop_size = pop_size
         self.max_generations = max_generations
-        self.crossover_rate = crossover_rate
-        self.mutation_rate = mutation_rate
         self.cv_folds = cv_folds
         self.random_state = random_state
         
         # Set random seeds
         np.random.seed(random_state)
         random.seed(random_state)
+        
+        # Initialize dynamic rates
+        self.crossover_rate = 0.8  # Initial value, will be updated dynamically
+        self.mutation_rate = 0.2   # Initial value, will be updated dynamically
+        self.dynamic_strategy = self._get_dynamic_strategy()
         
         # Define parameter bounds based on feature type
         self._set_parameter_bounds()
@@ -90,6 +86,47 @@ class FeatureEngineeringGA:
         self.fitness_history = []
         self.best_individual = None
         self.best_fitness = -np.inf
+    
+    def _get_dynamic_strategy(self) -> str:
+        """Determine dynamic rate strategy based on population size."""
+        if self.pop_size <= 100:
+            return "ILM/DHC"  # Increasing Low Mutation / Dynamic High Crossover
+        else:
+            return "DHM/ILC"  # Dynamic High Mutation / Increasing Low Crossover
+    
+    def _calculate_dynamic_rates(self, generation: int) -> Tuple[float, float]:
+        """
+        Calculate dynamic crossover and mutation rates based on generation and strategy.
+        
+        Returns:
+        --------
+        Tuple[float, float]
+            (crossover_rate, mutation_rate)
+        """
+        progress = generation / self.max_generations  # 0 to 1
+        
+        if self.dynamic_strategy == "ILM/DHC":
+            # Increasing Low Mutation / Dynamic High Crossover
+            mutation_rate = progress
+            crossover_rate = 1.0 - progress
+        elif self.dynamic_strategy == "DHM/ILC":
+            # Dynamic High Mutation / Increasing Low Crossover
+            mutation_rate = 1.0 - progress
+            crossover_rate = progress
+        else:
+            # Default fallback
+            mutation_rate = 0.5
+            crossover_rate = 0.5
+        
+        # Keep rates between 1% and 99%
+        mutation_rate = max(0.01, min(0.99, mutation_rate))
+        crossover_rate = max(0.01, min(0.99, crossover_rate))
+        
+        return crossover_rate, mutation_rate
+    
+    def _update_dynamic_rates(self, generation: int):
+        """Update crossover and mutation rates for the current generation."""
+        self.crossover_rate, self.mutation_rate = self._calculate_dynamic_rates(generation)
         
     def _set_parameter_bounds(self):
         """Set parameter bounds based on feature type."""
@@ -344,6 +381,9 @@ class FeatureEngineeringGA:
             print("-" * 60)
         
         for generation in range(self.max_generations):
+            # Update dynamic rates for this generation
+            self._update_dynamic_rates(generation)
+            
             # Evaluate population fitness
             fitness_scores = [self._evaluate_fitness(ind) for ind in self.population]
             
